@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
   # VaxCare Healthcare Management System
 
@@ -12,3 +13,6 @@
   - `npm run dev:frontend`
   - `npm run dev:backend`
   
+=======
+# VaxCare
+>>>>>>> ada47291bc7780d9fe34afa27b73e7ad0acc8e41
