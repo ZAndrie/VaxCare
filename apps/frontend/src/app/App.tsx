@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
 import {
@@ -8,7 +8,7 @@ import {
   ChevronRight, AlertTriangle, CheckCircle, Clock, TrendingUp,
   Search, Plus, X, Filter, Download, Eye, Edit2, Trash2,
   ShieldCheck, Activity, BarChart2, UserPlus, RefreshCw,
-  ChevronDown, ArrowUpRight, ArrowDownRight, Thermometer,
+  ChevronDown, Thermometer,
   MapPin, Phone, Mail, LogOut, Settings, Menu,
   GitCommitHorizontal, HeartPulse, Star, Award, Layers, PrinterIcon
 } from "lucide-react";
@@ -69,10 +69,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: AuthUser) => void }) {
       }
       setLoading(false);
     }, 600);
-  }
-
-  function fillDemo(u: string, p: string) {
-    setUsername(u); setPassword(p); setError("");
   }
 
   return (
@@ -147,45 +143,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: AuthUser) => void }) {
               {loading ? "Signing in…" : "Sign In"}
             </button>
           </form>
-
-          {/* Demo credentials */}
-          <div className="px-6 pb-5">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Demo Accounts</p>
-            {tab === "staff" ? (
-              <div className="space-y-1.5">
-                {[
-                  ["admin", "admin2025", "Dr. Pedro Cruz", "Admin"],
-                  ["ana.reyes", "health123", "RN Ana Reyes", "Nurse"],
-                  ["luz.garcia", "health123", "RN Luz Garcia", "Nurse"],
-                ].map(([u, p, name, role]) => (
-                  <button key={u} type="button" onClick={() => fillDemo(u, p)} className="w-full flex items-center justify-between bg-muted/60 hover:bg-muted rounded-lg px-3 py-2 transition-colors group">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">{name.charAt(0)}</div>
-                      <span className="text-xs font-medium text-foreground">{name}</span>
-                      <span className="text-[10px] text-muted-foreground">({role})</span>
-                    </div>
-                    <span className="font-mono text-[10px] text-muted-foreground group-hover:text-primary transition-colors">{u}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {[
-                  ["R001", "1990-03-15", "Maria Santos"],
-                  ["R002", "1979-07-22", "Jose dela Cruz"],
-                  ["R006", "1969-08-14", "Ramon Villanueva"],
-                ].map(([id, dob, name]) => (
-                  <button key={id} type="button" onClick={() => fillDemo(id, dob)} className="w-full flex items-center justify-between bg-muted/60 hover:bg-muted rounded-lg px-3 py-2 transition-colors group">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-teal-100 flex items-center justify-center text-[10px] font-bold text-teal-700">{name.charAt(0)}</div>
-                      <span className="text-xs font-medium text-foreground">{name}</span>
-                    </div>
-                    <span className="font-mono text-[10px] text-muted-foreground group-hover:text-primary transition-colors">{id}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
@@ -308,12 +265,6 @@ const MONTHLY_VAX_DATA = [
   { month: "Jun", vaccinations: 38, target: 60 },
 ];
 
-const COVERAGE_DATA = [
-  { name: "Fully Vaccinated", value: 48, color: "#0B7065" },
-  { name: "Partially Vaccinated", value: 32, color: "#3BADA0" },
-  { name: "Unvaccinated", value: 20, color: "#E0EEF0" },
-];
-
 const VACCINE_DIST_DATA = [
   { name: "COVID-19", doses: 145 },
   { name: "Influenza", doses: 38 },
@@ -343,22 +294,14 @@ const notifIcon: Record<string, JSX.Element> = {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-function StatCard({ icon, label, value, sub, trend, color }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; trend?: number; color: string }) {
+function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; trend?: number; color: string }) {
   return (
-    <div className="bg-card rounded-lg border border-border p-5 flex flex-col gap-3">
-      <div className="flex items-start justify-between">
-        <div className={`p-2.5 rounded-lg ${color}`}>{icon}</div>
-        {trend !== undefined && (
-          <span className={`flex items-center gap-0.5 text-xs font-mono font-medium ${trend >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-            {trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-            {Math.abs(trend)}%
-          </span>
-        )}
-      </div>
+    <div className="bg-card rounded-lg border border-border p-6 flex items-center gap-4">
+      <div className={`p-3 rounded-full ${color} shrink-0`}>{icon}</div>
       <div>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        <p className="text-sm text-muted-foreground mt-0.5">{label}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+        <p className="text-3xl font-bold text-foreground leading-none">{value}</p>
+        <p className="text-sm font-medium text-foreground mt-1.5">{label}</p>
+        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </div>
     </div>
   );
@@ -399,99 +342,73 @@ function Dashboard({ residents, stock, schedules, notifications, setModule }: {
   return (
     <div className="space-y-6">
       {unread > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3.5 flex items-center gap-3 cursor-pointer hover:bg-amber-100 transition-colors" onClick={() => setModule("notifications")}>
-          <AlertTriangle size={16} className="text-amber-600 shrink-0" />
-          <p className="text-sm text-amber-800 font-medium">{unread} unread alert{unread > 1 ? "s" : ""} require your attention — {lowStock} low-stock warning{lowStock !== 1 ? "s" : ""}, {missed} missed vaccination{missed !== 1 ? "s" : ""}</p>
-          <ChevronRight size={14} className="text-amber-600 ml-auto shrink-0" />
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3 cursor-pointer hover:bg-amber-100 transition-colors" onClick={() => setModule("notifications")}>
+          <AlertTriangle size={18} className="text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800">{unread} alert{unread > 1 ? "s" : ""} need your attention — {lowStock} low-stock warning{lowStock !== 1 ? "s" : ""}, {missed} missed vaccination{missed !== 1 ? "s" : ""}</p>
+          <ChevronRight size={16} className="text-amber-600 ml-auto shrink-0" />
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<Users size={18} className="text-teal-700" />} label="Total Residents" value={residents.length} sub="Registered in system" trend={8} color="bg-teal-50" />
-        <StatCard icon={<ShieldCheck size={18} className="text-emerald-700" />} label="Fully Vaccinated" value={fullyVax} sub={`${Math.round(fullyVax / residents.length * 100)}% coverage rate`} trend={12} color="bg-emerald-50" />
-        <StatCard icon={<Calendar size={18} className="text-blue-700" />} label="Upcoming Schedules" value={upcoming} sub="Next 30 days" trend={5} color="bg-blue-50" />
-        <StatCard icon={<Package size={18} className="text-amber-700" />} label="Low Stock Alerts" value={lowStock} sub="Vaccines below threshold" trend={-2} color="bg-amber-50" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard icon={<Users size={20} className="text-teal-700" />} label="Total Residents" value={residents.length} sub="Registered in system" color="bg-teal-50" />
+        <StatCard icon={<ShieldCheck size={20} className="text-emerald-700" />} label="Fully Vaccinated" value={fullyVax} sub={`${Math.round(fullyVax / residents.length * 100)}% coverage rate`} color="bg-emerald-50" />
+        <StatCard icon={<Calendar size={20} className="text-blue-700" />} label="Upcoming Schedules" value={upcoming} sub="Next 30 days" color="bg-blue-50" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 bg-card rounded-lg border border-border p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Monthly Vaccinations vs. Target</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={MONTHLY_VAX_DATA} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E4EAED" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: "DM Mono", fill: "#5E7A8A" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fontFamily: "DM Mono", fill: "#5E7A8A" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 6, fontSize: 12, border: "1px solid #E4EAED" }} />
-              <Bar dataKey="vaccinations" fill="#0B7065" radius={[3, 3, 0, 0]} name="Administered" />
-              <Bar dataKey="target" fill="#E4F2F0" radius={[3, 3, 0, 0]} name="Target" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-card rounded-lg border border-border p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Vaccination Coverage</h3>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart>
-              <Pie data={COVERAGE_DATA} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
-                {COVERAGE_DATA.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.color} />)}
-              </Pie>
-              <Tooltip contentStyle={{ borderRadius: 6, fontSize: 12, border: "1px solid #E4EAED" }} formatter={(v) => [`${v}%`, ""]} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-1.5 mt-2">
-            {COVERAGE_DATA.map(d => (
-              <div key={d.name} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-sm" style={{ background: d.color }} />
-                  <span className="text-muted-foreground">{d.name}</span>
-                </div>
-                <span className="font-mono font-medium text-foreground">{d.value}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="bg-card rounded-lg border border-border p-6">
+        <h3 className="text-base font-semibold text-foreground mb-5">Monthly Vaccinations vs. Target</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={MONTHLY_VAX_DATA} barGap={6}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E4EAED" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 13, fill: "#5E7A8A" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 13, fill: "#5E7A8A" }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={{ borderRadius: 8, fontSize: 13, border: "1px solid #E4EAED" }} />
+            <Bar dataKey="vaccinations" fill="#0B7065" radius={[4, 4, 0, 0]} name="Administered" />
+            <Bar dataKey="target" fill="#E4F2F0" radius={[4, 4, 0, 0]} name="Target" />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="bg-card rounded-lg border border-border p-5">
+        <div className="bg-card rounded-lg border border-border p-6">
           <SectionHeader title="Upcoming Schedules" action={
-            <button onClick={() => setModule("schedule")} className="text-xs text-primary font-medium hover:underline">View all</button>
+            <button onClick={() => setModule("schedule")} className="text-sm text-primary font-medium hover:underline">View all</button>
           } />
-          <div className="space-y-2">
+          <div className="space-y-3">
             {schedules.filter(s => s.status === "Upcoming").slice(0, 4).map(s => (
               <div key={s.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">{s.residentName.charAt(0)}</div>
+                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">{s.residentName.charAt(0)}</div>
                   <div>
                     <p className="text-sm font-medium text-foreground">{s.residentName}</p>
-                    <p className="text-xs text-muted-foreground">{s.vaccine} · {s.dose}</p>
+                    <p className="text-sm text-muted-foreground">{s.vaccine} · {s.dose}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-mono text-foreground">{new Date(s.scheduledDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}</p>
-                  <p className="text-xs text-muted-foreground">{s.purok}</p>
+                  <p className="text-sm text-foreground">{new Date(s.scheduledDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}</p>
+                  <p className="text-sm text-muted-foreground">{s.purok}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-card rounded-lg border border-border p-5">
+        <div className="bg-card rounded-lg border border-border p-6">
           <SectionHeader title="Vaccine Inventory" action={
-            <button onClick={() => setModule("inventory")} className="text-xs text-primary font-medium hover:underline">Manage</button>
+            <button onClick={() => setModule("inventory")} className="text-sm text-primary font-medium hover:underline">Manage</button>
           } />
-          <div className="space-y-2.5">
+          <div className="space-y-4">
             {stock.map(v => {
               const pct = Math.min(100, Math.round(v.quantity / (v.minStock * 3) * 100));
               const isCritical = v.quantity < v.minStock;
               const isLow = v.quantity <= v.minStock * 1.2;
               return (
                 <div key={v.id}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-foreground">{v.name}</span>
-                    <span className={`font-mono text-xs ${isCritical ? "text-red-600 font-semibold" : isLow ? "text-amber-600" : "text-muted-foreground"}`}>{v.quantity} doses</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-medium text-foreground">{v.name}</span>
+                    <span className={`text-sm ${isCritical ? "text-red-600 font-semibold" : isLow ? "text-amber-600" : "text-muted-foreground"}`}>{v.quantity} doses</span>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
                     <div className={`h-full rounded-full transition-all ${isCritical ? "bg-red-500" : isLow ? "bg-amber-400" : "bg-primary"}`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
