@@ -12,6 +12,10 @@ import {
   MapPin, Phone, Mail, LogOut, Settings, Menu,
   GitCommitHorizontal, HeartPulse, Star, Award, Layers, PrinterIcon
 } from "lucide-react";
+import {
+  authApi, residentsApi, vaccinationsApi, stockApi, schedulesApi, notificationsApi,
+  getToken, setToken, clearToken, ApiClientError,
+} from "./lib/api";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 type UserRole = "admin" | "worker" | "resident";
@@ -25,15 +29,7 @@ interface AuthUser {
   title: string;
 }
 
-const ACCOUNTS: { username: string; password: string; user: AuthUser }[] = [
-  { username: "admin", password: "admin2025", user: { username: "admin", displayName: "Dr. Pedro Cruz", role: "admin", avatar: "P", title: "Barangay Health Officer" } },
-  { username: "ana.reyes", password: "health123", user: { username: "ana.reyes", displayName: "RN Ana Reyes", role: "worker", avatar: "A", title: "Registered Nurse" } },
-  { username: "luz.garcia", password: "health123", user: { username: "luz.garcia", displayName: "RN Luz Garcia", role: "worker", avatar: "L", title: "Registered Nurse" } },
-  { username: "R001", password: "1990-03-15", user: { username: "R001", displayName: "Maria Santos", role: "resident", residentId: "R001", avatar: "M", title: "Resident" } },
-  { username: "R002", password: "1979-07-22", user: { username: "R002", displayName: "Jose dela Cruz", role: "resident", residentId: "R002", avatar: "J", title: "Resident" } },
-  { username: "R003", password: "1996-11-08", user: { username: "R003", displayName: "Ana Reyes", role: "resident", residentId: "R003", avatar: "A", title: "Resident" } },
-  { username: "R006", password: "1969-08-14", user: { username: "R006", displayName: "Ramon Villanueva", role: "resident", residentId: "R006", avatar: "R", title: "Resident" } },
-];
+const AUTH_USER_KEY = "vaxcare_user";
 
 const ROLE_ACCESS: Record<UserRole, Module[]> = {
   admin: ["dashboard", "residents", "vaccinations", "schedule", "inventory", "reports", "portal", "notifications", "timeline", "family", "priority", "certificate", "batches"],
@@ -50,25 +46,27 @@ function LoginScreen({ onLogin }: { onLogin: (user: AuthUser) => void }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      const match = ACCOUNTS.find(a =>
-        a.username.toLowerCase() === username.trim().toLowerCase() &&
-        a.password === password &&
-        (tab === "staff" ? a.user.role !== "resident" : a.user.role === "resident")
+    try {
+      const { token, user } =
+        tab === "staff"
+          ? await authApi.staffLogin(username.trim(), password)
+          : await authApi.residentLogin(username.trim(), password);
+      setToken(token);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+      onLogin(user as AuthUser);
+    } catch (err) {
+      setError(
+        err instanceof ApiClientError
+          ? err.message
+          : "Could not reach the server. Please try again."
       );
-      if (match) {
-        onLogin(match.user);
-      } else {
-        setError(tab === "staff"
-          ? "Invalid username or password."
-          : "Resident ID or birthdate not found. Use format YYYY-MM-DD.");
-      }
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   }
 
   return (
@@ -212,50 +210,10 @@ interface Notification {
   read: boolean;
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const RESIDENTS: Resident[] = [
-  { id: "R001", name: "Maria Santos", age: 34, gender: "Female", birthdate: "1990-03-15", address: "123 Sampaguita St.", phone: "09171234567", purok: "Purok 1", status: "Fully Vaccinated", nextDue: null, vaccinations: [{ id: "V1", vaccine: "COVID-19 Bivalent", dose: "Booster", date: "2024-11-10", worker: "RN Ana Reyes", batchNo: "BV-2024-001", site: "Left Arm" }, { id: "V2", vaccine: "Influenza", dose: "Annual", date: "2025-03-05", worker: "RN Ana Reyes", batchNo: "FLU-2025-01", site: "Right Arm" }] },
-  { id: "R002", name: "Jose dela Cruz", age: 45, gender: "Male", birthdate: "1979-07-22", address: "45 Rizal Ave.", phone: "09282345678", purok: "Purok 2", status: "Partially Vaccinated", nextDue: "2025-07-22", vaccinations: [{ id: "V3", vaccine: "COVID-19 Bivalent", dose: "1st Dose", date: "2025-01-15", worker: "RN Luz Garcia", batchNo: "BV-2025-003", site: "Left Arm" }] },
-  { id: "R003", name: "Ana Reyes", age: 28, gender: "Female", birthdate: "1996-11-08", address: "78 Mabini Blvd.", phone: "09393456789", purok: "Purok 1", status: "Fully Vaccinated", nextDue: null, vaccinations: [{ id: "V4", vaccine: "HPV", dose: "1st Dose", date: "2024-09-20", worker: "Dr. Pedro Cruz", batchNo: "HPV-2024-05", site: "Right Arm" }, { id: "V5", vaccine: "HPV", dose: "2nd Dose", date: "2024-12-20", worker: "Dr. Pedro Cruz", batchNo: "HPV-2024-08", site: "Right Arm" }] },
-  { id: "R004", name: "Carlos Mendoza", age: 62, gender: "Male", birthdate: "1962-05-30", address: "9 Aguinaldo Rd.", phone: "09504567890", purok: "Purok 3", status: "Partially Vaccinated", nextDue: "2025-08-15", vaccinations: [{ id: "V6", vaccine: "Pneumococcal", dose: "1st Dose", date: "2025-02-10", worker: "RN Luz Garcia", batchNo: "PNE-2025-02", site: "Left Arm" }] },
-  { id: "R005", name: "Luisa Torres", age: 19, gender: "Female", birthdate: "2005-12-01", address: "56 Luna St.", phone: "09615678901", purok: "Purok 2", status: "Unvaccinated", nextDue: "2025-07-10", vaccinations: [] },
-  { id: "R006", name: "Ramon Villanueva", age: 55, gender: "Male", birthdate: "1969-08-14", address: "32 Bonifacio St.", phone: "09726789012", purok: "Purok 4", status: "Fully Vaccinated", nextDue: null, vaccinations: [{ id: "V7", vaccine: "COVID-19 Bivalent", dose: "Booster", date: "2024-10-05", worker: "Dr. Pedro Cruz", batchNo: "BV-2024-002", site: "Left Arm" }, { id: "V8", vaccine: "Influenza", dose: "Annual", date: "2025-02-28", worker: "Dr. Pedro Cruz", batchNo: "FLU-2025-02", site: "Right Arm" }] },
-  { id: "R007", name: "Gloria Aquino", age: 41, gender: "Female", birthdate: "1983-04-17", address: "11 Magsaysay Blvd.", phone: "09837890123", purok: "Purok 3", status: "Partially Vaccinated", nextDue: "2025-07-30", vaccinations: [{ id: "V9", vaccine: "Hepatitis B", dose: "1st Dose", date: "2025-04-30", worker: "RN Ana Reyes", batchNo: "HB-2025-01", site: "Right Arm" }] },
-  { id: "R008", name: "Ernesto Lim", age: 70, gender: "Male", birthdate: "1954-01-23", address: "88 Quezon Ave.", phone: "09948901234", purok: "Purok 5", status: "Fully Vaccinated", nextDue: null, vaccinations: [{ id: "V10", vaccine: "COVID-19 Bivalent", dose: "Booster", date: "2025-01-08", worker: "RN Luz Garcia", batchNo: "BV-2025-001", site: "Left Arm" }, { id: "V11", vaccine: "Pneumococcal", dose: "Annual", date: "2025-03-15", worker: "RN Luz Garcia", batchNo: "PNE-2025-04", site: "Right Arm" }] },
-  { id: "R009", name: "Precy Abad", age: 25, gender: "Female", birthdate: "2000-06-11", address: "22 Pasig Rd.", phone: "09159012345", purok: "Purok 1", status: "Unvaccinated", nextDue: "2025-07-15", vaccinations: [] },
-  { id: "R010", name: "Roberto Castillo", age: 38, gender: "Male", birthdate: "1986-09-28", address: "67 Taft Ave.", phone: "09260123456", purok: "Purok 4", status: "Partially Vaccinated", nextDue: "2025-08-01", vaccinations: [{ id: "V12", vaccine: "COVID-19 Bivalent", dose: "1st Dose", date: "2025-03-20", worker: "Dr. Pedro Cruz", batchNo: "BV-2025-005", site: "Left Arm" }] },
-];
-
-const VACCINE_STOCK: VaccineStock[] = [
-  { id: "VS001", name: "COVID-19 Bivalent", type: "mRNA", quantity: 145, minStock: 50, expiryDate: "2025-12-31", manufacturer: "Pfizer-BioNTech", lastRestocked: "2025-05-10" },
-  { id: "VS002", name: "Influenza (Quadrivalent)", type: "Inactivated", quantity: 38, minStock: 40, expiryDate: "2025-10-15", manufacturer: "Sanofi Pasteur", lastRestocked: "2025-04-20" },
-  { id: "VS003", name: "HPV (Cervarix)", type: "VLP", quantity: 62, minStock: 30, expiryDate: "2026-03-20", manufacturer: "GlaxoSmithKline", lastRestocked: "2025-03-05" },
-  { id: "VS004", name: "Hepatitis B", type: "Recombinant", quantity: 15, minStock: 30, expiryDate: "2025-09-30", manufacturer: "Merck & Co.", lastRestocked: "2025-02-15" },
-  { id: "VS005", name: "Pneumococcal (PCV13)", type: "Conjugate", quantity: 89, minStock: 25, expiryDate: "2026-01-10", manufacturer: "Pfizer", lastRestocked: "2025-05-01" },
-  { id: "VS006", name: "Measles-Mumps-Rubella", type: "Live Attenuated", quantity: 74, minStock: 35, expiryDate: "2025-11-25", manufacturer: "Serum Institute", lastRestocked: "2025-04-12" },
-  { id: "VS007", name: "Varicella", type: "Live Attenuated", quantity: 22, minStock: 20, expiryDate: "2025-08-14", manufacturer: "Merck & Co.", lastRestocked: "2025-01-30" },
-];
-
-const SCHEDULES: ScheduleItem[] = [
-  { id: "S001", residentId: "R002", residentName: "Jose dela Cruz", vaccine: "COVID-19 Bivalent", dose: "2nd Dose", scheduledDate: "2025-07-22", status: "Upcoming", worker: "RN Ana Reyes", purok: "Purok 2" },
-  { id: "S002", residentId: "R005", residentName: "Luisa Torres", vaccine: "COVID-19 Bivalent", dose: "1st Dose", scheduledDate: "2025-07-10", status: "Upcoming", worker: "RN Luz Garcia", purok: "Purok 2" },
-  { id: "S003", residentId: "R009", residentName: "Precy Abad", vaccine: "HPV", dose: "1st Dose", scheduledDate: "2025-07-15", status: "Upcoming", worker: "Dr. Pedro Cruz", purok: "Purok 1" },
-  { id: "S004", residentId: "R004", residentName: "Carlos Mendoza", vaccine: "Pneumococcal", dose: "2nd Dose", scheduledDate: "2025-08-15", status: "Upcoming", worker: "RN Ana Reyes", purok: "Purok 3" },
-  { id: "S005", residentId: "R010", residentName: "Roberto Castillo", vaccine: "COVID-19 Bivalent", dose: "2nd Dose", scheduledDate: "2025-08-01", status: "Upcoming", worker: "Dr. Pedro Cruz", purok: "Purok 4" },
-  { id: "S006", residentId: "R007", residentName: "Gloria Aquino", vaccine: "Hepatitis B", dose: "2nd Dose", scheduledDate: "2025-07-30", status: "Upcoming", worker: "RN Ana Reyes", purok: "Purok 3" },
-  { id: "S007", residentId: "R001", residentName: "Maria Santos", vaccine: "Influenza", dose: "Annual", scheduledDate: "2025-06-10", status: "Missed", worker: "RN Luz Garcia", purok: "Purok 1" },
-  { id: "S008", residentId: "R006", residentName: "Ramon Villanueva", vaccine: "Influenza", dose: "Annual", scheduledDate: "2025-06-05", status: "Completed", worker: "Dr. Pedro Cruz", purok: "Purok 4" },
-];
-
-const NOTIFICATIONS: Notification[] = [
-  { id: "N001", type: "alert", title: "Critical Stock Level", message: "Hepatitis B vaccine has fallen below minimum stock threshold (15 remaining, minimum 30).", time: "2 min ago", read: false },
-  { id: "N002", type: "warning", title: "Low Inventory Warning", message: "Influenza (Quadrivalent) stock is below minimum (38 remaining, minimum 40).", time: "1 hour ago", read: false },
-  { id: "N003", type: "warning", title: "Missed Vaccination", message: "Maria Santos (R001) missed her scheduled Influenza vaccination on June 10, 2025.", time: "3 hours ago", read: false },
-  { id: "N004", type: "info", title: "Upcoming Schedule", message: "5 residents have vaccinations scheduled in the next 7 days.", time: "5 hours ago", read: true },
-  { id: "N005", type: "warning", title: "Near-Expiry Vaccine", message: "Varicella vaccine lot expires on August 14, 2025. Prioritize usage.", time: "1 day ago", read: true },
-  { id: "N006", type: "success", title: "Stock Replenished", message: "COVID-19 Bivalent vaccines restocked: 145 doses available.", time: "2 days ago", read: true },
-];
-
+// ─── Chart data ───────────────────────────────────────────────────────────────
+// The API has no monthly-aggregation endpoint yet, so the monthly trend chart
+// uses illustrative placeholder data. Everything else in the app (residents,
+// stock, schedules, notifications) is now live data fetched from the backend.
 const MONTHLY_VAX_DATA = [
   { month: "Jan", vaccinations: 42, target: 50 },
   { month: "Feb", vaccinations: 58, target: 50 },
@@ -263,16 +221,6 @@ const MONTHLY_VAX_DATA = [
   { month: "Apr", vaccinations: 49, target: 55 },
   { month: "May", vaccinations: 73, target: 60 },
   { month: "Jun", vaccinations: 38, target: 60 },
-];
-
-const VACCINE_DIST_DATA = [
-  { name: "COVID-19", doses: 145 },
-  { name: "Influenza", doses: 38 },
-  { name: "HPV", doses: 62 },
-  { name: "Hep B", doses: 15 },
-  { name: "PCV13", doses: 89 },
-  { name: "MMR", doses: 74 },
-  { name: "Varicella", doses: 22 },
 ];
 
 // ─── Utility helpers ──────────────────────────────────────────────────────────
@@ -422,12 +370,14 @@ function Dashboard({ residents, stock, schedules, notifications, setModule }: {
 }
 
 // ─── Residents ────────────────────────────────────────────────────────────────
-function ResidentsModule({ residents, setResidents }: { residents: Resident[]; setResidents: (r: Resident[]) => void }) {
+function ResidentsModule({ residents, onAddResident }: { residents: Resident[]; onAddResident: (data: { id: string; name: string; age: number; gender: "Male" | "Female"; birthdate: string; address: string; phone: string; purok: string }) => Promise<void> }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("All");
   const [selected, setSelected] = useState<Resident | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: "", age: "", gender: "Female" as "Male" | "Female", birthdate: "", address: "", phone: "", purok: "Purok 1" });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const filtered = useMemo(() =>
     residents.filter(r =>
@@ -435,12 +385,26 @@ function ResidentsModule({ residents, setResidents }: { residents: Resident[]; s
       (r.name.toLowerCase().includes(search.toLowerCase()) || r.id.toLowerCase().includes(search.toLowerCase()))
     ), [residents, search, filter]);
 
-  function addResident() {
+  async function addResident() {
     if (!form.name || !form.birthdate) return;
-    const newR: Resident = { id: `R${String(residents.length + 1).padStart(3, "0")}`, name: form.name, age: Number(form.age) || 0, gender: form.gender, birthdate: form.birthdate, address: form.address, phone: form.phone, purok: form.purok, status: "Unvaccinated", nextDue: null, vaccinations: [] };
-    setResidents([...residents, newR]);
-    setShowAdd(false);
-    setForm({ name: "", age: "", gender: "Female", birthdate: "", address: "", phone: "", purok: "Purok 1" });
+    // Derive the next sequential ID from existing resident IDs (e.g. R010 → R011).
+    const maxNum = residents.reduce((max, r) => {
+      const n = parseInt(r.id.replace(/\D/g, ""), 10);
+      return Number.isFinite(n) ? Math.max(max, n) : max;
+    }, 0);
+    const newId = `R${String(maxNum + 1).padStart(3, "0")}`;
+
+    setSaving(true);
+    setSaveError("");
+    try {
+      await onAddResident({ id: newId, name: form.name, age: Number(form.age) || 0, gender: form.gender, birthdate: form.birthdate, address: form.address, phone: form.phone, purok: form.purok });
+      setShowAdd(false);
+      setForm({ name: "", age: "", gender: "Female", birthdate: "", address: "", phone: "", purok: "Purok 1" });
+    } catch (err) {
+      setSaveError(err instanceof ApiClientError ? err.message : "Failed to register resident. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -479,10 +443,11 @@ function ResidentsModule({ residents, setResidents }: { residents: Resident[]; s
                   </select>
                 </div>
               </div>
+              {saveError && <p className="text-xs text-red-600">{saveError}</p>}
             </div>
             <div className="flex justify-end gap-2 p-5 border-t border-border">
               <button onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm rounded-md border border-border text-foreground hover:bg-muted transition-colors">Cancel</button>
-              <button onClick={addResident} className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">Register</button>
+              <button disabled={saving} onClick={addResident} className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50">{saving ? "Registering…" : "Register"}</button>
             </div>
           </div>
         </div>
@@ -580,28 +545,34 @@ function ResidentsModule({ residents, setResidents }: { residents: Resident[]; s
 }
 
 // ─── Vaccinations ─────────────────────────────────────────────────────────────
-function VaccinationsModule({ residents, setResidents, stock }: { residents: Resident[]; setResidents: (r: Resident[]) => void; stock: VaccineStock[] }) {
+function VaccinationsModule({ residents, stock, onRecordVaccination }: {
+  residents: Resident[]; stock: VaccineStock[];
+  onRecordVaccination: (residentId: string, data: { vaccine: string; dose: string; date: string; worker: string; batchNo: string; site: string }) => Promise<void>;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ residentId: "", vaccine: "", dose: "", date: new Date().toISOString().split("T")[0], worker: "RN Ana Reyes", batchNo: "", site: "Left Arm" });
   const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const allRecords = useMemo(() =>
     residents.flatMap(r => r.vaccinations.map(v => ({ ...v, residentName: r.name, residentId: r.id, residentPurok: r.purok }))),
     [residents]
   ).filter(r => r.residentName.toLowerCase().includes(search.toLowerCase()) || r.vaccine.toLowerCase().includes(search.toLowerCase()));
 
-  function recordVaccination() {
+  async function recordVaccination() {
     if (!form.residentId || !form.vaccine || !form.dose) return;
-    const newRec: VaccinationRecord = { id: `V${Date.now()}`, vaccine: form.vaccine, dose: form.dose, date: form.date, worker: form.worker, batchNo: form.batchNo, site: form.site };
-    const updated = residents.map(r => {
-      if (r.id !== form.residentId) return r;
-      const vaxList = [...r.vaccinations, newRec];
-      const status: Resident["status"] = vaxList.length >= 2 ? "Fully Vaccinated" : "Partially Vaccinated";
-      return { ...r, vaccinations: vaxList, status };
-    });
-    setResidents(updated);
-    setShowForm(false);
-    setForm(f => ({ ...f, residentId: "", vaccine: "", dose: "", batchNo: "" }));
+    setSaving(true);
+    setSaveError("");
+    try {
+      await onRecordVaccination(form.residentId, { vaccine: form.vaccine, dose: form.dose, date: form.date, worker: form.worker, batchNo: form.batchNo, site: form.site });
+      setShowForm(false);
+      setForm(f => ({ ...f, residentId: "", vaccine: "", dose: "", batchNo: "" }));
+    } catch (err) {
+      setSaveError(err instanceof ApiClientError ? err.message : "Failed to record vaccination. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -665,10 +636,11 @@ function VaccinationsModule({ residents, setResidents, stock }: { residents: Res
                   {["RN Ana Reyes", "RN Luz Garcia", "Dr. Pedro Cruz"].map(w => <option key={w}>{w}</option>)}
                 </select>
               </div>
+              {saveError && <p className="text-xs text-red-600">{saveError}</p>}
             </div>
             <div className="flex justify-end gap-2 p-5 border-t border-border">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm rounded-md border border-border text-foreground hover:bg-muted">Cancel</button>
-              <button onClick={recordVaccination} className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90">Record</button>
+              <button disabled={saving} onClick={recordVaccination} className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{saving ? "Recording…" : "Record"}</button>
             </div>
           </div>
         </div>
@@ -711,28 +683,51 @@ function VaccinationsModule({ residents, setResidents, stock }: { residents: Res
 }
 
 // ─── Schedule ─────────────────────────────────────────────────────────────────
-function ScheduleModule({ schedules, setSchedules, residents }: { schedules: ScheduleItem[]; setSchedules: (s: ScheduleItem[]) => void; residents: Resident[] }) {
+function ScheduleModule({ schedules, residents, onAddSchedule, onUpdateStatus }: {
+  schedules: ScheduleItem[]; residents: Resident[];
+  onAddSchedule: (data: { id: string; residentId: string; vaccine: string; dose: string; scheduledDate: string; worker: string; purok: string }) => Promise<void>;
+  onUpdateStatus: (id: string, status: ScheduleItem["status"]) => Promise<void>;
+}) {
   const [filter, setFilter] = useState("All");
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ residentId: "", vaccine: "", dose: "1st Dose", date: "", worker: "RN Ana Reyes" });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const filtered = filter === "All" ? schedules : schedules.filter(s => s.status === filter);
 
-  function addSchedule() {
+  async function addSchedule() {
     if (!form.residentId || !form.vaccine || !form.date) return;
     const resident = residents.find(r => r.id === form.residentId);
     if (!resident) return;
-    const newS: ScheduleItem = { id: `S${Date.now()}`, residentId: form.residentId, residentName: resident.name, vaccine: form.vaccine, dose: form.dose, scheduledDate: form.date, status: "Upcoming", worker: form.worker, purok: resident.purok };
-    setSchedules([...schedules, newS]);
-    setShowAdd(false);
-    setForm(f => ({ ...f, residentId: "", vaccine: "", date: "" }));
+    // Derive the next sequential schedule ID (e.g. S008 → S009).
+    const maxNum = schedules.reduce((max, s) => {
+      const n = parseInt(s.id.replace(/\D/g, ""), 10);
+      return Number.isFinite(n) ? Math.max(max, n) : max;
+    }, 0);
+    const newId = `S${String(maxNum + 1).padStart(3, "0")}`;
+
+    setSaving(true);
+    setSaveError("");
+    try {
+      await onAddSchedule({ id: newId, residentId: form.residentId, vaccine: form.vaccine, dose: form.dose, scheduledDate: form.date, worker: form.worker, purok: resident.purok });
+      setShowAdd(false);
+      setForm(f => ({ ...f, residentId: "", vaccine: "", date: "" }));
+    } catch (err) {
+      setSaveError(err instanceof ApiClientError ? err.message : "Failed to create schedule. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function markMissed(id: string) {
-    setSchedules(schedules.map(s => s.id === id ? { ...s, status: "Missed" as const } : s));
+  async function markMissed(id: string) {
+    setUpdatingId(id);
+    try { await onUpdateStatus(id, "Missed"); } finally { setUpdatingId(null); }
   }
-  function markCompleted(id: string) {
-    setSchedules(schedules.map(s => s.id === id ? { ...s, status: "Completed" as const } : s));
+  async function markCompleted(id: string) {
+    setUpdatingId(id);
+    try { await onUpdateStatus(id, "Completed"); } finally { setUpdatingId(null); }
   }
 
   const missed = schedules.filter(s => s.status === "Missed");
@@ -777,10 +772,11 @@ function ScheduleModule({ schedules, setSchedules, residents }: { schedules: Sch
                   )}
                 </div>
               ))}
+              {saveError && <p className="text-xs text-red-600">{saveError}</p>}
             </div>
             <div className="flex justify-end gap-2 p-5 border-t border-border">
               <button onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm rounded-md border border-border text-foreground hover:bg-muted">Cancel</button>
-              <button onClick={addSchedule} className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90">Schedule</button>
+              <button disabled={saving} onClick={addSchedule} className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{saving ? "Scheduling…" : "Schedule"}</button>
             </div>
           </div>
         </div>
@@ -831,8 +827,8 @@ function ScheduleModule({ schedules, setSchedules, residents }: { schedules: Sch
                 <td className="px-4 py-2.5">
                   {s.status === "Upcoming" && (
                     <div className="flex gap-1">
-                      <button onClick={() => markCompleted(s.id)} className="p-1 text-emerald-600 hover:text-emerald-700 transition-colors" title="Mark completed"><CheckCircle size={14} /></button>
-                      <button onClick={() => markMissed(s.id)} className="p-1 text-red-500 hover:text-red-600 transition-colors" title="Mark missed"><X size={14} /></button>
+                      <button disabled={updatingId === s.id} onClick={() => markCompleted(s.id)} className="p-1 text-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-40" title="Mark completed"><CheckCircle size={14} /></button>
+                      <button disabled={updatingId === s.id} onClick={() => markMissed(s.id)} className="p-1 text-red-500 hover:text-red-600 transition-colors disabled:opacity-40" title="Mark missed"><X size={14} /></button>
                     </div>
                   )}
                 </td>
@@ -846,14 +842,29 @@ function ScheduleModule({ schedules, setSchedules, residents }: { schedules: Sch
 }
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
-function InventoryModule({ stock, setStock }: { stock: VaccineStock[]; setStock: (s: VaccineStock[]) => void }) {
+function InventoryModule({ stock, onRestock }: { stock: VaccineStock[]; onRestock: (id: string, addQty: number) => Promise<void> }) {
   const [showRestock, setShowRestock] = useState<string | null>(null);
   const [restockQty, setRestockQty] = useState("50");
+  const [restocking, setRestocking] = useState(false);
+  const [restockError, setRestockError] = useState("");
 
-  function restock(id: string) {
-    setStock(stock.map(s => s.id === id ? { ...s, quantity: s.quantity + Number(restockQty), lastRestocked: new Date().toISOString().split("T")[0] } : s));
-    setShowRestock(null);
-    setRestockQty("50");
+  const vaccineDistData = useMemo(
+    () => stock.map(s => ({ name: s.name.split(" ")[0], doses: s.quantity })),
+    [stock]
+  );
+
+  async function restock(id: string) {
+    setRestocking(true);
+    setRestockError("");
+    try {
+      await onRestock(id, Number(restockQty));
+      setShowRestock(null);
+      setRestockQty("50");
+    } catch (err) {
+      setRestockError(err instanceof ApiClientError ? err.message : "Failed to restock. Please try again.");
+    } finally {
+      setRestocking(false);
+    }
   }
 
   const critical = stock.filter(s => s.quantity < s.minStock);
@@ -899,9 +910,10 @@ function InventoryModule({ stock, setStock }: { stock: VaccineStock[]; setStock:
               <label className="text-xs font-medium text-muted-foreground block mb-1">Doses to Add</label>
               <input type="number" value={restockQty} onChange={e => setRestockQty(e.target.value)} className="w-full bg-input-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
             </div>
+            {restockError && <p className="text-xs text-red-600 mt-2">{restockError}</p>}
             <div className="flex gap-2 mt-4">
               <button onClick={() => setShowRestock(null)} className="flex-1 px-4 py-2 text-sm rounded-md border border-border text-foreground hover:bg-muted">Cancel</button>
-              <button onClick={() => restock(showRestock)} className="flex-1 px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90">Restock</button>
+              <button disabled={restocking} onClick={() => restock(showRestock)} className="flex-1 px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{restocking ? "Restocking…" : "Restock"}</button>
             </div>
           </div>
         </div>
@@ -911,7 +923,7 @@ function InventoryModule({ stock, setStock }: { stock: VaccineStock[]; setStock:
         <div className="bg-card rounded-lg border border-border p-5">
           <h3 className="text-sm font-semibold text-foreground mb-4">Stock Distribution</h3>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={VACCINE_DIST_DATA} layout="vertical">
+            <BarChart data={vaccineDistData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#E4EAED" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 10, fontFamily: "DM Mono", fill: "#5E7A8A" }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#5E7A8A" }} axisLine={false} tickLine={false} width={65} />
@@ -1123,14 +1135,9 @@ function ReportsModule({ residents, schedules, stock }: { residents: Resident[];
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
-function NotificationsModule({ notifications, setNotifications }: { notifications: Notification[]; setNotifications: (n: Notification[]) => void }) {
-  function markAllRead() {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
-  }
-  function markRead(id: string) {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
-  }
-
+function NotificationsModule({ notifications, onMarkRead, onMarkAllRead }: {
+  notifications: Notification[]; onMarkRead: (id: string) => void; onMarkAllRead: () => void;
+}) {
   const unread = notifications.filter(n => !n.read);
 
   const typeBg: Record<string, string> = {
@@ -1144,12 +1151,12 @@ function NotificationsModule({ notifications, setNotifications }: { notification
     <div>
       <SectionHeader title="Notifications & Alerts" subtitle={`${unread.length} unread notifications`} action={
         unread.length > 0 ? (
-          <button onClick={markAllRead} className="text-xs text-primary font-medium hover:underline">Mark all as read</button>
+          <button onClick={onMarkAllRead} className="text-xs text-primary font-medium hover:underline">Mark all as read</button>
         ) : undefined
       } />
       <div className="space-y-2">
         {notifications.map(n => (
-          <div key={n.id} onClick={() => markRead(n.id)} className={`rounded-lg p-4 cursor-pointer transition-all ${typeBg[n.type]} ${n.read ? "opacity-60" : ""}`}>
+          <div key={n.id} onClick={() => onMarkRead(n.id)} className={`rounded-lg p-4 cursor-pointer transition-all ${typeBg[n.type]} ${n.read ? "opacity-60" : ""}`}>
             <div className="flex items-start gap-3">
               <div className="mt-0.5">{notifIcon[n.type]}</div>
               <div className="flex-1">
@@ -1790,13 +1797,71 @@ const NAV_ITEMS: { id: Module; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function App() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [module, setModule] = useState<Module>("dashboard");
-  const [residents, setResidents] = useState<Resident[]>(RESIDENTS);
-  const [stock, setStock] = useState<VaccineStock[]>(VACCINE_STOCK);
-  const [schedules, setSchedules] = useState<ScheduleItem[]>(SCHEDULES);
-  const [notifications, setNotifications] = useState<Notification[]>(NOTIFICATIONS);
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    try {
+      const stored = localStorage.getItem(AUTH_USER_KEY);
+      return stored && getToken() ? (JSON.parse(stored) as AuthUser) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [module, setModule] = useState<Module>(user?.role === "resident" ? "portal" : "dashboard");
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [stock, setStock] = useState<VaccineStock[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState("");
+
+  // Load (or reload) everything the current role is allowed to see.
+  async function loadData(currentUser: AuthUser) {
+    setDataLoading(true);
+    setDataError("");
+    try {
+      if (currentUser.role === "resident" && currentUser.residentId) {
+        const [me, scheduleRows, stockRows] = await Promise.all([
+          residentsApi.get(currentUser.residentId),
+          schedulesApi.list(),
+          stockApi.list(),
+        ]);
+        setResidents([me]);
+        setSchedules(scheduleRows);
+        setStock(stockRows);
+        setNotifications([]);
+      } else {
+        const residentRows = await residentsApi.list();
+        const withVax = await Promise.all(
+          residentRows.map(async (r) => ({
+            ...r,
+            vaccinations: await vaccinationsApi.listForResident(r.id),
+          }))
+        );
+        const [stockRows, scheduleRows, notificationRows] = await Promise.all([
+          stockApi.list(),
+          schedulesApi.list(),
+          notificationsApi.list(),
+        ]);
+        setResidents(withVax);
+        setStock(stockRows);
+        setSchedules(scheduleRows);
+        setNotifications(notificationRows);
+      }
+    } catch (err) {
+      if (err instanceof ApiClientError && err.status === 401) {
+        handleLogout();
+        return;
+      }
+      setDataError(err instanceof ApiClientError ? err.message : "Could not load data from the server.");
+    } finally {
+      setDataLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (user) loadData(user);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.username]);
 
   // When a resident logs in, send them straight to the portal pre-filled
   function handleLogin(u: AuthUser) {
@@ -1805,9 +1870,71 @@ export default function App() {
   }
 
   function handleLogout() {
+    clearToken();
+    localStorage.removeItem(AUTH_USER_KEY);
     setUser(null);
     setModule("dashboard");
     setSidebarOpen(false);
+    setResidents([]);
+    setStock([]);
+    setSchedules([]);
+    setNotifications([]);
+  }
+
+  // ── API-backed action handlers passed down to the modules ─────────────────
+  async function handleAddResident(data: { id: string; name: string; age: number; gender: "Male" | "Female"; birthdate: string; address: string; phone: string; purok: string }) {
+    const created = await residentsApi.create(data);
+    setResidents(prev => [...prev, created]);
+  }
+
+  async function handleRecordVaccination(residentId: string, data: { vaccine: string; dose: string; date: string; worker: string; batchNo: string; site: string }) {
+    const record = await vaccinationsApi.add(residentId, data);
+    // The backend recalculates the resident's status server-side; re-fetch that one resident to stay in sync.
+    const refreshed = await residentsApi.get(residentId);
+    setResidents(prev => prev.map(r => (r.id === residentId ? refreshed : r)));
+    void record;
+  }
+
+  async function handleAddSchedule(data: { id: string; residentId: string; vaccine: string; dose: string; scheduledDate: string; worker: string; purok: string }) {
+    const created = await schedulesApi.create(data);
+    setSchedules(prev => [...prev, created]);
+  }
+
+  async function handleUpdateScheduleStatus(id: string, status: ScheduleItem["status"]) {
+    const updated = await schedulesApi.updateStatus(id, status);
+    setSchedules(prev => prev.map(s => (s.id === id ? updated : s)));
+  }
+
+  async function handleRestock(id: string, addQty: number) {
+    const current = stock.find(s => s.id === id);
+    const newQuantity = (current?.quantity ?? 0) + addQty;
+    const updated = await stockApi.update(id, { quantity: newQuantity, lastRestocked: new Date().toISOString().split("T")[0] });
+    setStock(prev => prev.map(s => (s.id === id ? updated : s)));
+    // A restock can clear a low-stock warning notification server-side on the next check;
+    // refresh notifications for staff so the badge count stays accurate.
+    if (user && user.role !== "resident") {
+      try { setNotifications(await notificationsApi.list()); } catch { /* non-fatal */ }
+    }
+  }
+
+  async function handleMarkNotificationRead(id: string) {
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
+    try {
+      await notificationsApi.markRead(id);
+    } catch {
+      // Revert on failure
+      setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: false } : n)));
+    }
+  }
+
+  async function handleMarkAllRead() {
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    try {
+      await Promise.all(unreadIds.map(id => notificationsApi.markRead(id)));
+    } catch {
+      setDataError("Some notifications could not be marked as read.");
+    }
   }
 
   if (!user) return <LoginScreen onLogin={handleLogin} />;
@@ -1909,6 +2036,7 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {dataLoading && <RefreshCw size={14} className="text-muted-foreground animate-spin" />}
             {user.role !== "resident" && (
               <button onClick={() => setModule("notifications")} className="relative p-2 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted">
                 <Bell size={16} />
@@ -1925,14 +2053,21 @@ export default function App() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-5">
+          {dataError && (
+            <div className="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg p-3.5">
+              <AlertTriangle size={16} className="text-red-500 shrink-0" />
+              <p className="text-sm text-red-700 flex-1">{dataError}</p>
+              <button onClick={() => loadData(user)} className="text-xs font-semibold text-red-700 hover:underline shrink-0">Retry</button>
+            </div>
+          )}
           {module === "dashboard" && <Dashboard residents={residents} stock={stock} schedules={schedules} notifications={notifications} setModule={setModule} />}
-          {module === "residents" && <ResidentsModule residents={residents} setResidents={setResidents} />}
-          {module === "vaccinations" && <VaccinationsModule residents={residents} setResidents={setResidents} stock={stock} />}
-          {module === "schedule" && <ScheduleModule schedules={schedules} setSchedules={setSchedules} residents={residents} />}
-          {module === "inventory" && <InventoryModule stock={stock} setStock={setStock} />}
+          {module === "residents" && <ResidentsModule residents={residents} onAddResident={handleAddResident} />}
+          {module === "vaccinations" && <VaccinationsModule residents={residents} stock={stock} onRecordVaccination={handleRecordVaccination} />}
+          {module === "schedule" && <ScheduleModule schedules={schedules} residents={residents} onAddSchedule={handleAddSchedule} onUpdateStatus={handleUpdateScheduleStatus} />}
+          {module === "inventory" && <InventoryModule stock={stock} onRestock={handleRestock} />}
           {module === "reports" && <ReportsModule residents={residents} schedules={schedules} stock={stock} />}
           {module === "portal" && <ResidentPortal residents={residents} schedules={schedules} stock={stock} defaultResidentId={user.role === "resident" ? user.residentId : undefined} />}
-          {module === "notifications" && <NotificationsModule notifications={notifications} setNotifications={setNotifications} />}
+          {module === "notifications" && <NotificationsModule notifications={notifications} onMarkRead={handleMarkNotificationRead} onMarkAllRead={handleMarkAllRead} />}
           {module === "timeline" && <HealthHistoryTimeline residents={residents} schedules={schedules} />}
           {module === "family" && <FamilyHealthDashboard residents={residents} />}
           {module === "priority" && <PriorityPatients residents={residents} schedules={schedules} />}
