@@ -91,7 +91,7 @@ export function normalizeStock(s: any) {
   return {
     id: s.id,
     name: s.name,
-    type: s.type ?? "",
+    category: s.category ?? "",
     quantity: s.quantity,
     minStock: s.min_stock ?? s.minStock,
     expiryDate: s.expiry_date ? String(s.expiry_date).slice(0, 10) : (s.expiryDate ?? ""),
@@ -105,8 +105,10 @@ export function normalizeSchedule(s: any) {
     id: s.id,
     residentId: s.resident_id ?? s.residentId,
     residentName: s.resident_name ?? s.residentName ?? "",
-    vaccine: s.vaccine,
-    dose: s.dose,
+    vaccine: s.vaccine ?? "",
+    dose: s.dose ?? "",
+    appointmentType: s.appointment_type ?? s.appointmentType ?? "",
+    details: s.details ?? "",
     scheduledDate: s.scheduled_date ? String(s.scheduled_date).slice(0, 10) : s.scheduledDate,
     status: s.status,
     worker: s.worker ?? "",
@@ -189,8 +191,8 @@ export const vaccinationsApi = {
   },
 };
 
-// ─── Stock ───────────────────────────────────────────────────────────────────
-export const stockApi = {
+// ─── Stock (Medical Supplies) ───────────────────────────────────────────────
+export const suppliesApi = {
   list: async () => {
     const rows = await request<any[]>("/stock");
     return rows.map(normalizeStock);
@@ -213,7 +215,7 @@ export const schedulesApi = {
     const rows = await request<any[]>("/schedules");
     return rows.map(normalizeSchedule);
   },
-  create: async (data: { id: string; residentId: string; vaccine: string; dose: string; scheduledDate: string; worker: string; purok: string }) => {
+  create: async (data: { id: string; residentId: string; appointmentType: string; details: string; scheduledDate: string; worker: string; purok: string }) => {
     const row = await request<any>("/schedules", { method: "POST", body: JSON.stringify(data) });
     return normalizeSchedule(row);
   },
@@ -233,4 +235,19 @@ export const notificationsApi = {
     const row = await request<any>(`/notifications/${id}/read`, { method: "PUT" });
     return normalizeNotification(row);
   },
+};
+
+// ─── Analytics ─────────────────────────────────────────────────────────────
+export const analyticsApi = {
+  getMonthlyVaccinations: async () => {
+    return await request<any[]>("/analytics/monthly-vaccinations");
+  },
+};
+
+export const usersApi = {
+  list: async () => request<any[]>("/users"),
+  create: async (data: any) => request<any>("/users", { method: "POST", body: JSON.stringify(data) }),
+  update: async (id: number | string, data: any) => request<any>(`/users/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  delete: async (id: number | string) => request<any>(`/users/${id}`, { method: "DELETE" }),
+  updatePassword: async (id: number | string, newPassword: string) => request<any>(`/users/${id}/password`, { method: "PUT", body: JSON.stringify({ newPassword }) }),
 };

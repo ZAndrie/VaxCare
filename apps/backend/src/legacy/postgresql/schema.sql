@@ -40,10 +40,10 @@ CREATE TABLE IF NOT EXISTS vaccinations (
   created_at  TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS vaccine_stock (
-  id              VARCHAR(20) PRIMARY KEY,  -- e.g. 'VS001'
+CREATE TABLE IF NOT EXISTS medical_supplies (
+  id              VARCHAR(20) PRIMARY KEY,  -- e.g. 'MS001'
   name            VARCHAR(100) NOT NULL,
-  type            VARCHAR(50),
+  category        VARCHAR(50) NOT NULL,     -- 'Medicine', 'Supply', 'Vaccine'
   quantity        INTEGER NOT NULL DEFAULT 0,
   min_stock       INTEGER NOT NULL DEFAULT 0,
   expiry_date     DATE,
@@ -52,15 +52,15 @@ CREATE TABLE IF NOT EXISTS vaccine_stock (
 );
 
 CREATE TABLE IF NOT EXISTS schedules (
-  id             VARCHAR(20) PRIMARY KEY,   -- e.g. 'S001'
-  resident_id    VARCHAR(20) NOT NULL REFERENCES residents(id) ON DELETE CASCADE,
-  vaccine        VARCHAR(100) NOT NULL,
-  dose           VARCHAR(50) NOT NULL,
-  scheduled_date DATE NOT NULL,
-  status         VARCHAR(20) NOT NULL DEFAULT 'Upcoming'
-                 CHECK (status IN ('Upcoming', 'Completed', 'Missed', 'Rescheduled')),
-  worker         VARCHAR(100),
-  purok          VARCHAR(50)
+  id               VARCHAR(20) PRIMARY KEY,   -- e.g. 'S001'
+  resident_id      VARCHAR(20) NOT NULL REFERENCES residents(id) ON DELETE CASCADE,
+  appointment_type VARCHAR(100) NOT NULL,     -- 'Checkup', 'Vaccination', 'Pre-natal', etc.
+  details          VARCHAR(255),              -- specific vaccine or checkup details
+  scheduled_date   DATE NOT NULL,
+  status           VARCHAR(20) NOT NULL DEFAULT 'Upcoming'
+                   CHECK (status IN ('Upcoming', 'Completed', 'Missed', 'Rescheduled')),
+  worker           VARCHAR(100),
+  purok            VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS notifications (

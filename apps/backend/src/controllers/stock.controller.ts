@@ -5,7 +5,7 @@ import { checkLowStock } from "../services/notification.service";
 
 /** GET /api/stock */
 export const listStock = asyncHandler(async (_req: Request, res: Response) => {
-  const { rows } = await pool.query(`SELECT * FROM vaccine_stock ORDER BY name`);
+  const { rows } = await pool.query(`SELECT * FROM medical_supplies ORDER BY name`);
   res.json(rows);
 });
 
@@ -15,7 +15,7 @@ export const updateStock = asyncHandler(async (req: Request, res: Response) => {
   const { quantity, minStock, expiryDate, manufacturer, lastRestocked } = req.body;
 
   const { rows } = await pool.query(
-    `UPDATE vaccine_stock
+    `UPDATE medical_supplies
      SET quantity = COALESCE($1, quantity),
          min_stock = COALESCE($2, min_stock),
          expiry_date = COALESCE($3, expiry_date),

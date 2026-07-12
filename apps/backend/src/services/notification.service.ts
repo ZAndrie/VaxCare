@@ -18,7 +18,7 @@ export async function createNotification(
  */
 export async function checkLowStock(stockId: string): Promise<void> {
   const { rows } = await pool.query(
-    `SELECT name, quantity, min_stock FROM vaccine_stock WHERE id = $1`,
+    `SELECT name, quantity, min_stock FROM medical_supplies WHERE id = $1`,
     [stockId]
   );
   const stock = rows[0];

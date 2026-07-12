@@ -44,8 +44,8 @@ INSERT INTO vaccinations (resident_id, vaccine, dose, date, worker, batch_no, si
   ('R008', 'Pneumococcal',      'Annual',    '2025-03-15', 'RN Luz Garcia',   'PNE-2025-04', 'Right Arm'),
   ('R010', 'COVID-19 Bivalent', '1st Dose',  '2025-03-20', 'Dr. Pedro Cruz',  'BV-2025-005', 'Left Arm');
 
--- ─── Vaccine stock ───────────────────────────────────────────────────────────
-INSERT INTO vaccine_stock (id, name, type, quantity, min_stock, expiry_date, manufacturer, last_restocked) VALUES
+-- ─── Medical Supplies ─────────────────────────────────────────────────────────
+INSERT INTO medical_supplies (id, name, category, quantity, min_stock, expiry_date, manufacturer, last_restocked) VALUES
   ('VS001', 'COVID-19 Bivalent',        'mRNA',             145, 50, '2025-12-31', 'Pfizer-BioNTech',  '2025-05-10'),
   ('VS002', 'Influenza (Quadrivalent)', 'Inactivated',       38, 40, '2025-10-15', 'Sanofi Pasteur',   '2025-04-20'),
   ('VS003', 'HPV (Cervarix)',           'VLP',               62, 30, '2026-03-20', 'GlaxoSmithKline',  '2025-03-05'),
@@ -56,15 +56,15 @@ INSERT INTO vaccine_stock (id, name, type, quantity, min_stock, expiry_date, man
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── Schedules ───────────────────────────────────────────────────────────────
-INSERT INTO schedules (id, resident_id, vaccine, dose, scheduled_date, status, worker, purok) VALUES
-  ('S001', 'R002', 'COVID-19 Bivalent', '2nd Dose', '2025-07-22', 'Upcoming',  'RN Ana Reyes',   'Purok 2'),
-  ('S002', 'R005', 'COVID-19 Bivalent', '1st Dose', '2025-07-10', 'Upcoming',  'RN Luz Garcia',  'Purok 2'),
-  ('S003', 'R009', 'HPV',               '1st Dose', '2025-07-15', 'Upcoming',  'Dr. Pedro Cruz', 'Purok 1'),
-  ('S004', 'R004', 'Pneumococcal',      '2nd Dose', '2025-08-15', 'Upcoming',  'RN Ana Reyes',   'Purok 3'),
-  ('S005', 'R010', 'COVID-19 Bivalent', '2nd Dose', '2025-08-01', 'Upcoming',  'Dr. Pedro Cruz', 'Purok 4'),
-  ('S006', 'R007', 'Hepatitis B',       '2nd Dose', '2025-07-30', 'Upcoming',  'RN Ana Reyes',   'Purok 3'),
-  ('S007', 'R001', 'Influenza',         'Annual',   '2025-06-10', 'Missed',    'RN Luz Garcia',  'Purok 1'),
-  ('S008', 'R006', 'Influenza',         'Annual',   '2025-06-05', 'Completed', 'Dr. Pedro Cruz', 'Purok 4')
+INSERT INTO schedules (id, resident_id, appointment_type, details, scheduled_date, status, worker, purok) VALUES
+  ('S001', 'R002', 'Vaccination', 'COVID-19 Bivalent - 2nd Dose', '2025-07-22', 'Upcoming',  'RN Ana Reyes',   'Purok 2'),
+  ('S002', 'R005', 'Vaccination', 'COVID-19 Bivalent - 1st Dose', '2025-07-10', 'Upcoming',  'RN Luz Garcia',  'Purok 2'),
+  ('S003', 'R009', 'Vaccination', 'HPV - 1st Dose',               '2025-07-15', 'Upcoming',  'Dr. Pedro Cruz', 'Purok 1'),
+  ('S004', 'R004', 'Vaccination', 'Pneumococcal - 2nd Dose',      '2025-08-15', 'Upcoming',  'RN Ana Reyes',   'Purok 3'),
+  ('S005', 'R010', 'Vaccination', 'COVID-19 Bivalent - 2nd Dose', '2025-08-01', 'Upcoming',  'Dr. Pedro Cruz', 'Purok 4'),
+  ('S006', 'R007', 'Vaccination', 'Hepatitis B - 2nd Dose',       '2025-07-30', 'Upcoming',  'RN Ana Reyes',   'Purok 3'),
+  ('S007', 'R001', 'Vaccination', 'Influenza - Annual',           '2025-06-10', 'Missed',    'RN Luz Garcia',  'Purok 1'),
+  ('S008', 'R006', 'Vaccination', 'Influenza - Annual',           '2025-06-05', 'Completed', 'Dr. Pedro Cruz', 'Purok 4')
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── Notifications ───────────────────────────────────────────────────────────

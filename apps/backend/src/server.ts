@@ -6,8 +6,10 @@ import authRoutes from "./routes/auth.routes";
 import residentsRoutes from "./routes/residents.routes";
 import vaccinationsRoutes from "./routes/vaccinations.routes";
 import stockRoutes from "./routes/stock.routes";
+import analyticsRoutes from "./routes/analytics.routes";
 import schedulesRoutes from "./routes/schedules.routes";
 import notificationsRoutes from "./routes/notifications.routes";
+import usersRoutes from "./routes/users.routes";
 import { errorHandler } from "./middleware/errorHandler";
 
 dotenv.config();
@@ -22,8 +24,10 @@ app.use("/api/residents", residentsRoutes);
 // Nested: /api/residents/:id/vaccinations
 app.use("/api/residents/:id/vaccinations", vaccinationsRoutes);
 app.use("/api/stock", stockRoutes);
+app.use("/api/analytics", analyticsRoutes);
 app.use("/api/schedules", schedulesRoutes);
 app.use("/api/notifications", notificationsRoutes);
+app.use("/api/users", usersRoutes);
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 

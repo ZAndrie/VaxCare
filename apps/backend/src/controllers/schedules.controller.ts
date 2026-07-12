@@ -5,25 +5,26 @@ import { asyncHandler, ApiError } from "../middleware/errorHandler";
 /** GET /api/schedules */
 export const listSchedules = asyncHandler(async (_req: Request, res: Response) => {
   const { rows } = await pool.query(
-    `SELECT s.*, r.name AS resident_name
+    `SELECT s.id, s.scheduled_date, s.appointment_type, s.details, s.status, s.worker, s.purok,
+            r.id as resident_id, r.name as resident_name, r.phone
      FROM schedules s
-     JOIN residents r ON r.id = s.resident_id
-     ORDER BY s.scheduled_date`
+     JOIN residents r ON s.resident_id = r.id
+     ORDER BY s.scheduled_date ASC`
   );
   res.json(rows);
 });
 
 /** POST /api/schedules */
 export const createSchedule = asyncHandler(async (req: Request, res: Response) => {
-  const { id, residentId, vaccine, dose, scheduledDate, worker, purok } = req.body;
-  if (!id || !residentId || !vaccine || !scheduledDate) {
-    throw new ApiError(400, "id, residentId, vaccine, and scheduledDate are required");
+  const { id, residentId, appointmentType, details, scheduledDate, worker, purok } = req.body;
+  if (!id || !residentId || !appointmentType || !scheduledDate) {
+    throw new ApiError(400, "id, residentId, appointmentType, and scheduledDate are required");
   }
 
   const { rows } = await pool.query(
-    `INSERT INTO schedules (id, resident_id, vaccine, dose, scheduled_date, worker, purok)
+    `INSERT INTO schedules (id, resident_id, appointment_type, details, scheduled_date, worker, purok)
      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [id, residentId, vaccine, dose, scheduledDate, worker, purok]
+    [id, residentId, appointmentType, details, scheduledDate, worker, purok]
   );
   res.status(201).json(rows[0]);
 });
